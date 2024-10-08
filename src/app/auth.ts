@@ -42,6 +42,37 @@ export const {
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account && account.provider === "google") {
+        const existingUser = user.email ? await findUserByEmail(user.email) : null
+        if (existingUser) {
+          // Link the Google account to the existing user
+          await clientPromise.then(client => {
+            const db = client.db("Next_Ecommerce")
+            return db.collection("accounts").updateOne(
+              { userId: existingUser._id },
+              {
+                $set: {
+                  provider: account.provider,
+                  type: account.type,
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  refresh_token: account.refresh_token,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                  session_state: account.session_state,
+                }
+              },
+              { upsert: true }
+            )
+          })
+          return true
+        }
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
