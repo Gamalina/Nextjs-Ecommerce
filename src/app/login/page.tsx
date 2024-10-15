@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from "next-auth/react"
 import { useRouter } from 'next/navigation'
+import axios from 'axios'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,21 +18,24 @@ export default function LoginPage() {
 
     if (isLogin) {
       try {
-        const result = await signIn('credentials', {
-          redirect: false,
+        const result = await axios.post('/api/auth/callback/credentials', {
           email,
           password,
-        })
+        });
 
-        if (result?.error) {
-          setError('Invalid email or password')
+
+        if (result.status === 200) {
+          router.push('/dashboard')
+          
         } else {
-          router.push('/')
+          setError('Invalid email or password')
         }
       } catch (error) {
-        setError('An error occurred. Please try again.1')
+        console.log(error)
+        setError('An error occurred. Please try again.')
       }
-    } else {
+    } 
+    else {
       try {
         const res = await fetch('/register', {
           method: 'POST',
@@ -46,23 +49,18 @@ export default function LoginPage() {
           setError(data.error || 'An error occurred. Please try again.')
         } else {
           // Automatically sign in the user after successful registration
-          await signIn('credentials', {
+          await axios.post('/api/auth/callback/credentials', {
             redirect: false,
             email,
             password,
           })
-          router.push('/')
+          router.push('/dashboard')
         }
       } catch (error) {
-        setError('An error occurred. Please try again.2')
+        setError('An error occurred. Please try again.')
       }
     }
   }
-
-  const handleGoogleSignIn = async () => {
-    await signIn('google', { callbackUrl: '/' })
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -137,15 +135,6 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
-
-        <div>
-          <button
-            onClick={handleGoogleSignIn}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
-            Sign in with Google
-          </button>
-        </div>
 
         <div className="text-center">
           <button
