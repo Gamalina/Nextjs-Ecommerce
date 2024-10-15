@@ -1,34 +1,36 @@
-import { NextResponse } from 'next/server'
-import bcrypt from 'bcrypt'
-import clientPromise from '../lib/mongodb'
+// pages/api/register.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+import bcrypt from 'bcrypt';
+import { connectToDatabase } from '../lib/mongoose';
+import User from '../models/User';
 
-export async function POST(req: Request) {
-  try {
-    const { name, email, password } = await req.json()
-
-    // Check if user already exists
-    const client = await clientPromise
-    const db = client.db("Next_Ecommerce")
-    const existingUser = await db.collection("users").findOne({ email })
-    if (existingUser) {
-      return NextResponse.json({ error: 'User already exists' }, { status: 400 })
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // Insert new user
-    const result = await db.collection("users").insertOne({
-      name,
-      email,
-      password: hashedPassword,
-    })
-
-    const newUser = await db.collection("users").findOne({ _id: result.insertedId })
-
-    return NextResponse.json({ user: newUser }, { status: 201 })
-  } catch (error) {
-    console.error('Registration error:', error)
-    return NextResponse.json({ error: 'An error occurred during registration' }, { status: 500 })
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
+
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+
+  await connectToDatabase();
+
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser) {
+    return res.status(400).json({ message: 'User already exists' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  const newUser = new User({
+    email,
+    password: hashedPassword,
+  });
+
+  await newUser.save();
+
+  return res.status(201).json({ message: 'User created successfully' });
 }
